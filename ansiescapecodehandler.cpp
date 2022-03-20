@@ -86,14 +86,23 @@ AnsiEscapeCodeHandler &AnsiEscapeCodeHandler::operator=(AnsiEscapeCodeHandler &&
 void AnsiEscapeCodeHandler::appendAnsiText(const QString &text)
 {
 
-    auto formattedText = parseText(text);
+    auto const formattedText = parseText(text);
     auto at_bottom = false;
+    auto currFontSize = m_textCursor.charFormat().fontPointSize();
+    auto currFontStyleHint = m_textCursor.charFormat().fontStyleHint();
+    auto currFontFamily = m_textCursor.charFormat().fontFamily();
+    auto currFontFamilies = m_textCursor.charFormat().fontFamilies().toStringList();
     if(m_scrollBar)
         at_bottom = (m_scrollBar->value() == m_scrollBar->maximum());
 
     for (auto const& text_ : qAsConst(formattedText)) {
+        auto format = text_.format;
+        format.setFontPointSize(currFontSize);
+        format.setFontFamily(currFontFamily);
+        format.setFontFamilies(currFontFamilies);
+        format.setFontStyleHint(currFontStyleHint);
         m_textCursor.movePosition(QTextCursor::End);
-        m_textCursor.setCharFormat(text_.format);
+        m_textCursor.setCharFormat(format);
         m_textCursor.insertText(text_.text);
         m_textCursor.movePosition(QTextCursor::End);
     }
@@ -267,6 +276,7 @@ QList<FormattedText> AnsiEscapeCodeHandler::parseText(const FormattedText &input
                         break;
                     case StrikeOutText:
                         charFormat.setFontStrikeOut(true);
+                        charFormat.setFontOverline(true);
                         setFormatScope(charFormat);
                         break;
                     case DefaultTextColor:
