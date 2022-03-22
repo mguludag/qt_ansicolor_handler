@@ -50,6 +50,28 @@ namespace Utils {
     \endlist
 */
 
+
+enum AnsiEscapeCodes {
+    ResetFormat            =  0,
+    BoldText               =  1,
+    ItalicText             =  3,
+    UnderlineText          =  4,
+    StrikeOutText          =  8,
+    TextColorStart         = 30,
+    TextColorEnd           = 37,
+    RgbTextColor           = 38,
+    DefaultTextColor       = 39,
+    BackgroundColorStart   = 40,
+    BackgroundColorEnd     = 47,
+    RgbBackgroundColor     = 48,
+    DefaultBackgroundColor = 49
+};
+
+const QString escape        = "\x1b[";
+const QChar semicolon       = ';';
+const QChar colorTerminator = 'm';
+const QChar eraseToEol      = 'K';
+
 static QColor ansiColor(uint code)
 {
 
@@ -85,24 +107,14 @@ AnsiEscapeCodeHandler &AnsiEscapeCodeHandler::operator=(AnsiEscapeCodeHandler &&
 
 void AnsiEscapeCodeHandler::appendAnsiText(const QString &text)
 {
-
-    auto const formattedText = parseText(text);
+    auto const formattedText = parseText(FormattedText(text, m_textCursor.charFormat()));
     auto at_bottom = false;
-    auto currFontSize = m_textCursor.charFormat().fontPointSize();
-    auto currFontStyleHint = m_textCursor.charFormat().fontStyleHint();
-    auto currFontFamily = m_textCursor.charFormat().fontFamily();
-    auto currFontFamilies = m_textCursor.charFormat().fontFamilies().toStringList();
     if(m_scrollBar)
         at_bottom = (m_scrollBar->value() == m_scrollBar->maximum());
 
     for (auto const& text_ : qAsConst(formattedText)) {
-        auto format = text_.format;
-        format.setFontPointSize(currFontSize);
-        format.setFontFamily(currFontFamily);
-        format.setFontFamilies(currFontFamilies);
-        format.setFontStyleHint(currFontStyleHint);
         m_textCursor.movePosition(QTextCursor::End);
-        m_textCursor.setCharFormat(format);
+        m_textCursor.setCharFormat(text_.format);
         m_textCursor.insertText(text_.text);
         m_textCursor.movePosition(QTextCursor::End);
     }
@@ -115,27 +127,6 @@ void AnsiEscapeCodeHandler::appendAnsiText(const QString &text)
 
 QList<FormattedText> AnsiEscapeCodeHandler::parseText(const FormattedText &input)
 {
-    enum AnsiEscapeCodes {
-        ResetFormat            =  0,
-        BoldText               =  1,
-        ItalicText             =  3,
-        UnderlineText          =  4,
-        StrikeOutText          =  8,
-        TextColorStart         = 30,
-        TextColorEnd           = 37,
-        RgbTextColor           = 38,
-        DefaultTextColor       = 39,
-        BackgroundColorStart   = 40,
-        BackgroundColorEnd     = 47,
-        RgbBackgroundColor     = 48,
-        DefaultBackgroundColor = 49
-    };
-
-    const QString escape        = "\x1b[";
-    const QChar semicolon       = ';';
-    const QChar colorTerminator = 'm';
-    const QChar eraseToEol      = 'K';
-
     QList<FormattedText> outputData;
     QTextCharFormat charFormat = m_previousFormatClosed ? input.format : m_previousFormat;
     QString strippedText;
@@ -167,10 +158,10 @@ QList<FormattedText> AnsiEscapeCodeHandler::parseText(const FormattedText &input
         }
         const int escapePos = strippedText.indexOf(escape.at(0));
         if (escapePos < 0) {
-            outputData << FormattedText(strippedText, charFormat);
+            outputData.push_back(FormattedText(strippedText, charFormat));
             break;
         } else if (escapePos != 0) {
-            outputData << FormattedText(strippedText.left(escapePos), charFormat);
+            outputData.push_back(FormattedText(strippedText.left(escapePos), charFormat));
             strippedText.remove(0, escapePos);
         }
 
@@ -198,13 +189,13 @@ QList<FormattedText> AnsiEscapeCodeHandler::parseText(const FormattedText &input
                 default:
                     // not a control sequence
                     m_pendingText.clear();
-                    outputData << FormattedText(strippedText.left(1), charFormat);
+                    outputData.push_back(FormattedText(strippedText.at(0), charFormat));
                     strippedText.remove(0, 1);
                     continue;
                 }
                 break;
             }
-            m_pendingText += strippedText.mid(0, escape.length());
+            m_pendingText += strippedText.midRef(0, escape.length());
             strippedText.remove(0, escape.length());
 
             // \e[K is not supported. Just strip it.
@@ -215,18 +206,18 @@ QList<FormattedText> AnsiEscapeCodeHandler::parseText(const FormattedText &input
             }
             // get the number
             QString strNumber;
-            QStringList numbers;
+            QList<QString> numbers;
             while (!strippedText.isEmpty()) {
                 if (strippedText.at(0).isDigit()) {
                     strNumber += strippedText.at(0);
                 } else {
                     if (!strNumber.isEmpty())
-                        numbers << strNumber;
+                        numbers.push_back(strNumber);
                     if (strNumber.isEmpty() || strippedText.at(0) != semicolon)
                         break;
                     strNumber.clear();
                 }
-                m_pendingText += strippedText.mid(0, 1);
+                m_pendingText += strippedText.midRef(0, 1);
                 strippedText.remove(0, 1);
             }
             if (strippedText.isEmpty())
