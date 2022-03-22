@@ -40,11 +40,19 @@ public:
     FormattedText(const QString &txt, const QTextCharFormat &fmt = QTextCharFormat()) :
         text(txt), format(fmt)
     { }
+    FormattedText(QString &&txt, QTextCharFormat &&fmt = QTextCharFormat()) :
+        text(txt), format(fmt)
+    { }
 
     QString text;
     QTextCharFormat format;
 };
+}
 
+Q_DECLARE_TYPEINFO(Utils::FormattedText, Q_MOVABLE_TYPE);
+Q_DECLARE_TYPEINFO(QList<Utils::FormattedText>, Q_MOVABLE_TYPE);
+
+namespace Utils {
 class AnsiEscapeCodeHandler : public QObject
 {
     Q_OBJECT
@@ -71,3 +79,4 @@ private:
 };
 
 } // namespace Utils
+
