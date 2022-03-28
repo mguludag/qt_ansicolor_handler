@@ -48,6 +48,6 @@ MainWindow::MainWindow(QWidget *parent)
     ...
 }
 ```
-    
+![screenshot](https://github.com/mguludag/qt_ansicolor_handler/blob/main/Screenshot%202022-03-28%20233842.png?raw=true)
     
     
