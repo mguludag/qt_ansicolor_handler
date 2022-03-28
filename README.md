@@ -7,7 +7,7 @@ ansi color code parser class from qt-creator's source code and modified and adde
 ### mainwindow.h
 ```C++
 #include "ui_mainwindow.h"
-#include "ansiescapecodehandler.h"
+#include "ansiescapecodehandler.hpp"
 #include <QMainWindow>
 #include <QPlainTextEdit>
 #include <QThread>
